@@ -1,0 +1,137 @@
+import pygame
+import math
+
+# Initialize pygame
+pygame.init()
+
+# Game constants
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+FOV = math.pi / 3  # Field of view (60 degrees)
+MAX_DEPTH = 800  # Maximum depth for raycasting
+MAP_WIDTH = 8
+MAP_HEIGHT = 8
+TILE_SIZE = 64
+MOVE_SPEED = 2
+ROTATE_SPEED = 0.05
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+DARK_GRAY = (50, 50, 50)
+LIGHT_GRAY = (150, 150, 150)
+RED = (255, 0, 0)
+
+# Set up display
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("First Person Raycasting Game")
+
+# Map layout (0 = empty space, 1 = wall)
+game_map = [
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 0, 1],
+    [1, 0, 0, 0, 1, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1]
+]
+
+# Player position and angle
+player_x, player_y = 128, 128
+player_angle = math.pi / 4  # Starting angle (45 degrees)
+player_dx, player_dy = 0, 0
+
+# Raycasting function
+def cast_ray(angle):
+    # Calculate the direction of the ray
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    
+    # Start at the player position
+    x = player_x
+    y = player_y
+    depth = 0
+
+    while depth < MAX_DEPTH:
+        x += cos_a
+        y += sin_a
+        depth += 1
+        
+        # Check if we hit a wall
+        map_x, map_y = int(x // TILE_SIZE), int(y // TILE_SIZE)
+        if map_x < 0 or map_x >= MAP_WIDTH or map_y < 0 or map_y >= MAP_HEIGHT:
+            break
+        if game_map[map_y][map_x] == 1:
+            return depth
+
+    return MAX_DEPTH  # If no wall hit, return max depth
+
+# Drawing function to render the scene
+def draw_scene():
+    for ray in range(0, SCREEN_WIDTH):
+        # Calculate the angle for this ray
+        angle = (player_angle - FOV / 2) + (ray / SCREEN_WIDTH) * FOV
+
+        # Cast the ray and get the depth
+        depth = cast_ray(angle)
+
+        # Calculate the height of the wall
+        wall_height = min(int(SCREEN_HEIGHT / (depth / 10)), SCREEN_HEIGHT)
+
+        # Draw the vertical wall slice
+        color = LIGHT_GRAY if depth < MAX_DEPTH else DARK_GRAY
+        pygame.draw.line(screen, color, (ray, SCREEN_HEIGHT // 2 - wall_height // 2), (ray, SCREEN_HEIGHT // 2 + wall_height // 2))
+
+# Move the player based on input
+def move_player(keys):
+    global player_x, player_y, player_angle
+
+    if keys[pygame.K_w]:
+        player_x += math.cos(player_angle) * MOVE_SPEED
+        player_y += math.sin(player_angle) * MOVE_SPEED
+    if keys[pygame.K_s]:
+        player_x -= math.cos(player_angle) * MOVE_SPEED
+        player_y -= math.sin(player_angle) * MOVE_SPEED
+    if keys[pygame.K_a]:
+        player_x += math.cos(player_angle - math.pi / 2) * MOVE_SPEED
+        player_y += math.sin(player_angle - math.pi / 2) * MOVE_SPEED
+    if keys[pygame.K_d]:
+        player_x -= math.cos(player_angle - math.pi / 2) * MOVE_SPEED
+        player_y -= math.sin(player_angle - math.pi / 2) * MOVE_SPEED
+
+    if keys[pygame.K_LEFT]:
+        player_angle -= ROTATE_SPEED
+    if keys[pygame.K_RIGHT]:
+        player_angle += ROTATE_SPEED
+
+# Game loop
+def game_loop():
+    running = True
+    while running:
+        screen.fill(BLACK)
+        keys = pygame.key.get_pressed()
+
+        # Handle quitting
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Move the player
+        move_player(keys)
+
+        # Draw the scene
+        draw_scene()
+
+        # Update display
+        pygame.display.flip()
+
+        # Cap the frame rate
+        pygame.time.Clock().tick(60)
+
+    pygame.quit()
+    quit()
+
+if __name__ == "__main__":
+    game_loop()
